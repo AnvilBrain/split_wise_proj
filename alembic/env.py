@@ -9,7 +9,7 @@ from core.db import Base
 from settings import settings
 
 # Импортируем модели, чтобы Alembic их увидел
-from models import user, group, group_member, ___init___
+from models import user, group, group_member, expense, expense_share, activity_log, ___init___
 
 config = context.config
 
