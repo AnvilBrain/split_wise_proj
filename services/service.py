@@ -1,4 +1,4 @@
-from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb
+from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb
 from fastapi import FastAPI, HTTPException
 from core.security import create_access_token, create_refresh_token, hash_password, check_hashed_password
 async def get_user_by_email(email, password, db):
@@ -54,5 +54,9 @@ async def delete_member_from_group_service(member, group_id, db):
 
 
 async def get_user_grups_service(current_user, db):
-    result = get_user_grups_askdb(current_user, db)
+    result = await get_user_grups_askdb(current_user, db)
+    return result
+
+async def get_every_user_service(group_id, db):
+    result = await get_every_user_askdb(group_id, db)
     return result

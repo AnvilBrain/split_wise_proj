@@ -66,19 +66,19 @@ async def add_member_to_group_askdb(member_to_add, group_id, db):
 
 
 async def delete_member_from_group_askdb(member, group_id, db):
-    user_idd = db.execute(select(User).where(or_(User.email == member, User.full_name == member)))
+    user_idd =  await db.execute(select(User).where(or_(User.email == member, User.full_name == member)))
     user = user_idd.scar_one_or_none()
 
     if user is None:
             raise HTTPException(status_code=404, detail="unexpected behavior")
     
     amount_owed = db.execute(select(ExpenseShare).where(ExpenseShare.user_id == user.id))
-    is_owed = amount_owed.scaler_one_or_none()
+    is_owed = amount_owed.scalar_one_or_none()
 
     if is_owed != 0:
         raise HTTPException(status_code=409, detail="cannot delete user with amount owed > 0")
     
-    to_delete = db.execute(delete(GroupMember).where(GroupMember.user_id == user.id))
+    to_delete = await db.execute(delete(GroupMember).where(GroupMember.user_id == user.id))
     db.commit()
     return {"message": "success"}
 
@@ -88,6 +88,11 @@ async def delete_member_from_group_askdb(member, group_id, db):
 
 
 async def get_user_grups_askdb(current_user, db):
-    gruops = db.execute(select(GroupMember).where(GroupMember.user_id == current_user.id))
+    gruops = await db.execute(select(GroupMember).where(GroupMember.user_id == current_user.id))
     groups_user = gruops.scalars().all()
     return groups_user
+
+async def get_every_user_askdb(group_id, current_user, db):
+    result = await db.execute(select(User).join(GroupMember, GroupMember.user_id == User.id).where(GroupMember.group_id == group_id))
+    users = result.scalars().all()
+    return users
