@@ -60,3 +60,8 @@ async def get_user_grups_service(current_user, db):
 async def get_every_user_service(group_id, db):
     result = await get_every_user_askdb(group_id, db)
     return result
+
+async def create_expense_service(expense, group_id, user, db):
+    result = await create_expense_askdb(expense, group_id, user, db)
+    if result is not True:
+        raise HTTPException(status_code=404, detail="unexpected")
