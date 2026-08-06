@@ -30,18 +30,25 @@ class UserResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class Expense(BaseModel):
-    paid_by: str
+class ExpenseShare(BaseModel):
+    user_id: int
+    amount: Decimal | None = None
+    percent: Decimal | None = None
+
+class CreateExpense(BaseModel):
     title: str
     amount: Decimal
+    paid_by: int
     split_type: SplitType
-    members: list[int]
+    members: list[int] | None = None        # для EQUAL
+    shares: list[ExpenseShare] | None = None # для EXACT и PERCENT
 
     #group_id = Column(Integer, ForeignKey("groups.id"), index=True)
     #paid_by = Column(Integer, ForeignKey("user.id"), index=True)
     #title = Column(String, index=True)
     #amount = Column(Numeric(10, 2), index=True)
     #split_type = Column(
+    
 @router.post("/login")
 async def login_user(login: UserLogin, db=Depends(get_db)):
     finally_des = await get_user_by_email(login.email, login.password, db)
@@ -90,6 +97,7 @@ async def get_every_user(group_id:int, current_user=Depends(get_current_user), d
     return result
 
 @router.post("/groups/{group_id}/expenses")
-async def create_expense(expense: Expense, group_id:int, current_user=Depends(get_current_user),db=Depends(get_db)):
+async def create_expense(expense: CreateExpense, group_id:int, current_user=Depends(get_current_user), db=Depends(get_db)):
     await check_access(current_user , db, group_id)
     result = await create_expense_service(expense, group_id, current_user, db)
+    return result

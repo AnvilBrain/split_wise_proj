@@ -62,6 +62,15 @@ async def get_every_user_service(group_id, db):
     return result
 
 async def create_expense_service(expense, group_id, user, db):
-    result = await create_expense_askdb(expense, group_id, user, db)
+    if expense.split_type == SplitType.EQUAL:
+        result = await create_expense_equal(expense, group_id, user, db)
+
+    elif expense.split_type == SplitType.EXACT:
+        result = await create_expense_exact(expense, group_id, user, db)
+
+    elif expense.split_type == SplitType.PERCENT:
+        result = await create_expense_percent(expense, group_id, user, db)
+        
     if result is not True:
         raise HTTPException(status_code=404, detail="unexpected")
+    

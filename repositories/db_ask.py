@@ -99,7 +99,11 @@ async def get_every_user_askdb(group_id, current_user, db):
     users = result.scalars().all()
     return users
 
-async def create_expense_askdb(expense, group_id, user, db):
+#equal
+async def create_expense_equal(expense, group_id, user, db):
+    if len_of_members == 0:
+            raise HTTPException(status_code=404, detail="cannot be empty list")
+    
     new_expense = Expense(
         group_id = group_id,
         paid_by = expense.paid_by,
@@ -113,16 +117,19 @@ async def create_expense_askdb(expense, group_id, user, db):
     await db.refresh(new_expense)
 
     len_of_members = int(len(expense.members)) #3
-    if len_of_members == 0:
-        raise HTTPException(status_code=404, detail="cannot be empty list")
+    
     to_expense = (expense.amount / len_of_members).quantize(Decimal("0.01")) #33.333333 -> 99.99 -> 100- 99.99 -> = 0.1
     accurate_expense = (expense.amount - (to_expense * len_of_members))
-
-    to_accurate = True
+    
+    if accurate_expense > 0:
+        to_accurate = True
+    else:
+        to_accurate = False
 
     for i in range (len_of_members):
         if to_accurate is True:
             to_expense += accurate_expense
+            to_accurate = False
         new_expense_share = ExpenseShare(
                 expense_id = new_expense.id,
                 user_id = expense.members[i],
@@ -134,7 +141,64 @@ async def create_expense_askdb(expense, group_id, user, db):
     
     return True
 
+#exact
+async def create_expense_exact(expense, group_id, user, db):
+    new_expense = Expense(
+        group_id = group_id,
+        paid_by = expense.paid_by,
+        title = expense.title,
+        amount = expense.amount,
+        split_type = expense.split_type
+    )
 
+    db.add(new_expense)
+    await db.commit()
+    await db.refresh(new_expense)
+
+    total = sum(share.amount for share in expense.shares)
+    if total != expense.amount:
+        raise HTTPException(status_code=400, detail="суммы не сходятся")
+    for share in expense.shares:
+        new_expense_share = ExpenseShare(
+                expense_id = new_expense.id,
+                user_id = share.user_id,
+                amount_owed = share.amount
+            )
+        db.add(new_expense_share)
+    await db.commit()
+    await db.refresh(new_expense_share)
+
+    return True
+
+
+#percent
+async def create_expense_percent(expense, group_id, user, db):
+    new_expense = Expense(
+        group_id = group_id,
+        paid_by = expense.paid_by,
+        title = expense.title,
+        amount = expense.amount,
+        split_type = expense.split_type
+    )
+    db.add(new_expense)
+    await db.commit()
+    await db.refresh(new_expense)
+
+    
+    total = sum(share.percent for share in expense.shares)
+    if total != 100:
+        raise HTTPException(status_code=400, detail="сумма процентов должна быть 100")
+    for share in expense.shares:
+        amount_owed = expense.amount * share.percent / 100
+        new_expense_share = ExpenseShare(
+                expense_id = new_expense.id,
+                user_id = share.user_id,
+                amount_owed = amount_owed
+            )
+        db.add(new_expense_share)
+    await db.commit()
+    await db.refresh(new_expense_share)
+    return True
 # class ExpenseShare(Base):
 #     __tablename__ = "expense_share"
 #     id = Column(Integer, primary_key=True, index=True)
