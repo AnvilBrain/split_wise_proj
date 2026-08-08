@@ -205,3 +205,10 @@ async def create_expense_percent(expense, group_id, user, db):
 #     expense_id = Column(Integer, ForeignKey("expense.id"), index=True)
 #     user_id = Column(Integer, ForeignKey("user.id"), index=True)
 #     amount_owed = Column(Numeric(10, 2), index=True)
+
+
+
+async def get_expenses_db_ask(group_id, page, limit, user, db):
+    offset = (page - 1) * limit
+    result = await db.execute(select(Expense).where(Expense.group_id == group_id).limit(limit).offset(offset))
+    return result.scalars().all()

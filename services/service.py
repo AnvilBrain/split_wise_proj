@@ -1,4 +1,4 @@
-from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb
+from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask
 from fastapi import FastAPI, HTTPException
 from core.security import create_access_token, create_refresh_token, hash_password, check_hashed_password
 async def get_user_by_email(email, password, db):
@@ -73,4 +73,8 @@ async def create_expense_service(expense, group_id, user, db):
         
     if result is not True:
         raise HTTPException(status_code=404, detail="unexpected")
-    
+    return {"message": "success"}
+
+async def get_expenses_service(group_id, page, limit, user, db):
+    result = await get_expenses_db_ask(group_id, page, limit, db)
+    return result
