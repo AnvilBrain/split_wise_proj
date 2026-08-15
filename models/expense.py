@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, N
 from sqlalchemy.sql import func
 from core.db import Base
 import enum
-from decimal import Decimal
 
 class SplitType(enum.Enum):
     EQUAL = "EQUAL"

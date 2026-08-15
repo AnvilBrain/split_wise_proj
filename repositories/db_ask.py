@@ -208,7 +208,32 @@ async def create_expense_percent(expense, group_id, user, db):
 
 
 
-async def get_expenses_db_ask(group_id, page, limit, user, db):
+async def get_expenses_db_ask(group_id, page, limit, db):
     offset = (page - 1) * limit
     result = await db.execute(select(Expense).where(Expense.group_id == group_id).limit(limit).offset(offset))
     return result.scalars().all()
+
+
+async def delete_expense_db_ask(expense_id, group_id, db):
+    result = await db.execute(select(Expense).where(Expense.group_id == group_id, Expense.id == expense_id))
+    expense = result.scalar_one_or_none()
+    if expense is None:
+        raise HTTPException(status_code=404, detail="invalid data")
+    expense.is_deleted = True
+    await db.execute(delete(ExpenseShare).where(ExpenseShare.expense_id == expense_id))
+    await db.commit()
+    return {"message": "success"}
+
+async def balance_ask_db(group_id, current_user, db):
+    result = await db.execute(select(GroupMember).where(GroupMember.group_id == group_id))
+    cycle = result.scalars().all()
+    balances = []
+    for member in cycle:
+        paid = await db.scalar(select(func.sum(Expense.amount)).where(Expense.paid_by == member.user_id, Expense.is_deleted != True, Expense.group_id == group_id))
+        owed = await db.scalar(select(func.sum(ExpenseShare.amount_owed)).join(Expense, Expense.id == ExpenseShare.expense_id).where(ExpenseShare.user_id == member.user_id, Expense.group_id == group_id, Expense.is_deleted == False))
+        paid = paid or Decimal("0")
+        owed = owed or Decimal("0")
+        balance = paid - owed
+        member_balance = {"user_id": member.user_id, "balance": balance}
+        balances.append(member_balance)
+

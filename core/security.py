@@ -20,6 +20,7 @@ def create_refresh_token(email: str):
     payload = {"sub": email, "exp": expire}
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return token
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def hash_password(password: str):
     return pwd_context.hash(password)
@@ -31,7 +32,7 @@ def check_hashed_password(plain_password: str, hashed_password: str):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)):
     try:
-        to_check = await jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        to_check = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         emeail = to_check.get("sub")
     except:
         raise HTTPException(status_code=401, detail="unexpected behavior")

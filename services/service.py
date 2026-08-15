@@ -1,4 +1,4 @@
-from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask
+from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask, delete_expense_db_ask, balance_ask_db
 from fastapi import FastAPI, HTTPException
 from core.security import create_access_token, create_refresh_token, hash_password, check_hashed_password
 async def get_user_by_email(email, password, db):
@@ -78,3 +78,43 @@ async def create_expense_service(expense, group_id, user, db):
 async def get_expenses_service(group_id, page, limit, user, db):
     result = await get_expenses_db_ask(group_id, page, limit, db)
     return result
+
+async def delete_expense_service(expense_id, group_id, db):
+    result = await delete_expense_db_ask(expense_id, group_id, db)
+    return result
+
+async def balance_service(group_id, current_user, db):
+    result = await balance_ask_db(group_id, current_user, db)
+
+    positive_balance = []
+    negative_balance = []
+
+    complex_balance = []
+
+    for member in result:
+        if member["balance"] < 0:
+            negative_balance.append(member)
+        else:
+            positive_balance.append(member)
+    while positive_balance and negative_balance:
+        debtor = min(negative_balance, key = lambda x: x["balance"])
+        creditor = max(positive_balance, key = lambda x: x["balance"])
+        micro_result = creditor["balance"] + debtor["balance"]
+        if micro_result >= 0:
+            adds = {"from": debtor["user_id"], "to": creditor["user_id"], "amount": abs(debtor["balance"])}
+            negative_balance.remove(debtor)
+            creditor["balance"] = micro_result
+            complex_balance.append(adds)
+        else:
+            adds = {"from": debtor["user_id"], "to": creditor["user_id"], "amount": creditor["balance"]}
+            positive_balance.remove(creditor)
+            debtor["balance"] = micro_result
+            complex_balance.append(adds)
+    return complex_balance
+
+
+
+
+
+
+    

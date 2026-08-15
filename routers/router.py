@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
-from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service
+from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service
 from core.db import get_db
 from core.security import get_current_user, check_access
 from models.expense import SplitType
@@ -106,4 +106,15 @@ async def create_expense(expense: CreateExpense, group_id:int, current_user=Depe
 async def get_expenses(group_id: int, page: int = 1, limit: int = 10, current_user=Depends(get_current_user), db=Depends(get_db)):
     await check_access(current_user , db, group_id)
     result = await get_expenses_service(group_id, page, limit, db)
+    return result
+
+@router.delete("/groups/{group_id}/expenses/{expense_id}")
+async def delete_expense(expense_id: int, group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
+    await check_access(current_user , db, group_id)
+    result = await delete_expense_service(expense_id, group_id, db)
+    return result
+
+@router.get("/groups/{group_id}/balance")
+async def balance(group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
+    result = await balance_service(group_id, current_user, db)
     return result
