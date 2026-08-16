@@ -41,12 +41,12 @@ async def create_group_service(user, name, db):
     is_created = await create_group_ask_db(user, name, db)
     return is_created
 
-async def add_member_to_group_service(member_to_add, group_id, db):
-    result = await add_member_to_group_askdb(member_to_add, group_id, db)
+async def add_member_to_group_service(member_to_add, group_id, user, db):
+    result = await add_member_to_group_askdb(member_to_add, group_id, user, db)
     return result
 
 
-async def delete_member_from_group_service(member, group_id, db):
+async def delete_member_from_group_service(member, group_id, user, db):
     result = await delete_member_from_group_askdb(member, group_id, db)
     return result
     #result = await db.execute(select(User).where(User.email == email))

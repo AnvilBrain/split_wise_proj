@@ -1,12 +1,13 @@
 from sqlalchemy import select, delete, or_
 from models.user import User
-from fastapi import FastAPI, HTTPException
-from core.security import hash_password, check_hashed_password
+from fastapi import HTTPException
+from core.security import hash_password
 from models.group import Group
 from models.group_member import GroupMember
 from models.expense_share import ExpenseShare
 from models.expense import Expense
 from decimal import Decimal
+from log import activity_log
 
 async def ask_db_about_email(email, db):
     result = await db.execute(select(User).where(User.email == email))
@@ -42,7 +43,7 @@ async def create_group_ask_db(user, name, db):
     return {"message": "success"}
 
 
-async def add_member_to_group_askdb(member_to_add, group_id, db):
+async def add_member_to_group_askdb(member_to_add, group_id, user, db):
     user = await db.execute(select(User).where(or_(User.email == member_to_add, User.full_name == member_to_add)))
     user_fin = user.scalar_one_or_none()
 
@@ -63,6 +64,7 @@ async def add_member_to_group_askdb(member_to_add, group_id, db):
     db.add(new_member)
     await db.commit()
     await db.refresh(new_member)
+    await activity_log(group_id, user.user_id, "add member to group", f"added {user_fin.id}", db)
     return{"message": "success"}
 
 
@@ -138,6 +140,7 @@ async def create_expense_equal(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
+    await activity_log(group_id, user.user_id, "created equal expense", f"{user.user_id} created equal expense", db)
     
     return True
 
@@ -167,6 +170,7 @@ async def create_expense_exact(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
+    await activity_log(group_id, user.user_id, "created exact expense", f"{user.user_id} created exact expense", db)
 
     return True
 
@@ -198,6 +202,8 @@ async def create_expense_percent(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
+    await activity_log(group_id, user.user_id, "created percent expense", f"{user.user_id} created percent expense", db)
+
     return True
 # class ExpenseShare(Base):
 #     __tablename__ = "expense_share"
@@ -214,7 +220,7 @@ async def get_expenses_db_ask(group_id, page, limit, db):
     return result.scalars().all()
 
 
-async def delete_expense_db_ask(expense_id, group_id, db):
+async def delete_expense_db_ask(expense_id, group_id, user, db):
     result = await db.execute(select(Expense).where(Expense.group_id == group_id, Expense.id == expense_id))
     expense = result.scalar_one_or_none()
     if expense is None:
@@ -222,6 +228,7 @@ async def delete_expense_db_ask(expense_id, group_id, db):
     expense.is_deleted = True
     await db.execute(delete(ExpenseShare).where(ExpenseShare.expense_id == expense_id))
     await db.commit()
+    await activity_log(group_id, user.user_id, "deleted expense", f"{user.user_id} deleted expense {expense_id}", db)
     return {"message": "success"}
 
 async def balance_ask_db(group_id, current_user, db):
@@ -236,4 +243,5 @@ async def balance_ask_db(group_id, current_user, db):
         balance = paid - owed
         member_balance = {"user_id": member.user_id, "balance": balance}
         balances.append(member_balance)
+    return balances
 

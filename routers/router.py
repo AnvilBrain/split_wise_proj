@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
-from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service
+from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service, get_creditor_service
 from core.db import get_db
 from core.security import get_current_user, check_access
 from models.expense import SplitType
@@ -76,7 +76,7 @@ async def refresh_token(current_user=Depends(get_current_user)):
 @router.post("/groups/{group_id}/members")
 async def add_member_to_group(member: AddMember, current_user=Depends(get_current_user), db=Depends(get_db), group_id=int):
     await check_access(current_user , db, group_id)
-    is_member_added = await add_member_to_group_service(member.group_member, group_id, db)
+    is_member_added = await add_member_to_group_service(member.group_member, group_id, current_user, db)
     return is_member_added
 
 @router.delete("/groups/{group_id}/members")
@@ -110,8 +110,8 @@ async def get_expenses(group_id: int, page: int = 1, limit: int = 10, current_us
 
 @router.delete("/groups/{group_id}/expenses/{expense_id}")
 async def delete_expense(expense_id: int, group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
-    await check_access(current_user , db, group_id)
-    result = await delete_expense_service(expense_id, group_id, db)
+    await check_access(current_user, db, group_id)
+    result = await delete_expense_service(expense_id, group_id, current_user, db)
     return result
 
 @router.get("/groups/{group_id}/balance")
@@ -122,3 +122,4 @@ async def balance(group_id: int, current_user=Depends(get_current_user), db=Depe
 @router.get("/balance/{group_id}/{creditor_id}")
 async def get_creditor(creditor_id: int, group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
     result = get_creditor_service(creditor_id, group_id, current_user, db)
+    return result
