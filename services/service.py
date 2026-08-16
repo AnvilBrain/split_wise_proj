@@ -1,6 +1,7 @@
-from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask, delete_expense_db_ask, balance_ask_db
+from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask, delete_expense_db_ask, balance_ask_db, get_activity_askdb
 from fastapi import FastAPI, HTTPException
 from core.security import create_access_token, create_refresh_token, hash_password, check_hashed_password
+
 async def get_user_by_email(email, password, db):
     decision = await ask_db_about_email(email, db)
     if decision is None:
@@ -143,6 +144,9 @@ async def get_creditor_service(creditor_id, group_id, current_user, db):
     return {"message": "You have no debts to this person"}
 
 
+async def get_activity_service(group_id, page, limit, db):
+    result = await get_activity_askdb(group_id, page, limit, db)
+    return result
 
 
 

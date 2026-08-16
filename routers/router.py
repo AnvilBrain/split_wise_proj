@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
-from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service, get_creditor_service
+from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service, get_creditor_service, get_activity_service
 from core.db import get_db
 from core.security import get_current_user, check_access
 from models.expense import SplitType
@@ -122,4 +122,10 @@ async def balance(group_id: int, current_user=Depends(get_current_user), db=Depe
 @router.get("/balance/{group_id}/{creditor_id}")
 async def get_creditor(creditor_id: int, group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
     result = get_creditor_service(creditor_id, group_id, current_user, db)
+    return result
+
+@router.get("/groups/{group_id}/activity")
+async def get_activity(group_id: int, page: int = 1, limit: int = 10, current_user=Depends(get_current_user), db=Depends(get_db)):
+    await check_access(current_user , db, group_id)
+    result = await get_activity_service(group_id, page, limit, db)
     return result
