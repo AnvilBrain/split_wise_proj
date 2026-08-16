@@ -112,6 +112,40 @@ async def balance_service(group_id, current_user, db):
             complex_balance.append(adds)
     return complex_balance
 
+async def get_creditor_service(creditor_id, group_id, current_user, db):
+    result = await balance_ask_db(group_id, current_user, db)
+
+    positive_balance = []
+    negative_balance = []
+
+    for member in result:
+        if member["balance"] < 0:
+            negative_balance.append(member)
+        else:
+            positive_balance.append(member)
+    while positive_balance and negative_balance:
+        debtor = min(negative_balance, key = lambda x: x["balance"])
+        creditor = max(positive_balance, key = lambda x: x["balance"])
+        micro_result = creditor["balance"] + debtor["balance"]
+        if micro_result >= 0:
+            adds = {"from": debtor["user_id"], "to": creditor["user_id"], "amount": abs(debtor["balance"])}
+            if adds["from"] == current_user.id and adds["to"] == creditor_id:
+                return adds
+            negative_balance.remove(debtor)
+            creditor["balance"] = micro_result
+
+        else:
+            adds = {"from": debtor["user_id"], "to": creditor["user_id"], "amount": creditor["balance"]}
+            if adds["from"] == current_user.id and adds["to"] == creditor_id:
+                return adds
+            positive_balance.remove(creditor)
+            debtor["balance"] = micro_result
+    return {"message": "You have no debts to this person"}
+
+
+
+
+
 
 
 

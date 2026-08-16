@@ -118,3 +118,7 @@ async def delete_expense(expense_id: int, group_id: int, current_user=Depends(ge
 async def balance(group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
     result = await balance_service(group_id, current_user, db)
     return result
+
+@router.get("/balance/{group_id}/{creditor_id}")
+async def get_creditor(creditor_id: int, group_id: int, current_user=Depends(get_current_user), db=Depends(get_db)):
+    result = get_creditor_service(creditor_id, group_id, current_user, db)
