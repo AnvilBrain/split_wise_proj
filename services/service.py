@@ -11,8 +11,8 @@ async def get_user_by_email(email, password, db):
         raise HTTPException(status_code=401, detail="пароль не верный")
 
 
-    access_token = create_access_token(decision.email)
-    refresh_token = create_refresh_token(decision.email)
+    access_token = await create_access_token(decision.email, db)
+    refresh_token = create_refresh_token(decision.email, db)
 
     return {
         "access_token": access_token,
@@ -21,9 +21,9 @@ async def get_user_by_email(email, password, db):
     }
 
 
-async def refresh_token_by_email(email):
+async def refresh_token_by_email(email, db, token):
 
-    access_token = create_access_token(email)
+    access_token = await create_access_token(email, db, token)
 
     return {
         "access_token": access_token,
@@ -47,7 +47,7 @@ async def add_member_to_group_service(member_to_add, group_id, user, db):
     return result
 
 
-async def delete_member_from_group_service(member, group_id, user, db):
+async def delete_member_from_group_service(member, group_id, db):
     result = await delete_member_from_group_askdb(member, group_id, db)
     return result
     #result = await db.execute(select(User).where(User.email == email))

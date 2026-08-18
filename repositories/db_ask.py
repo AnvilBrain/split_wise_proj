@@ -7,7 +7,8 @@ from models.group_member import GroupMember
 from models.expense_share import ExpenseShare
 from models.expense import Expense
 from decimal import Decimal
-from log import activity_log
+from repositories.log import activity_log
+from models.activity_log import ActivityLog
 
 async def ask_db_about_email(email, db):
     result = await db.execute(select(User).where(User.email == email))
@@ -31,16 +32,30 @@ async def register_user_into_db(email, full_name, password, db):
     return {"message": "success"}
 
 async def create_group_ask_db(user, name, db):
-
     new_group = Group(
-        name = name,
-        created_by = user.id
+        name=name,
+        created_by=user.id
     )
+
     db.add(new_group)
+
+    # Получаем ID новой группы до commit
+    await db.flush()
+
+    new_member = GroupMember(
+        group_id=new_group.id,
+        user_id=user.id
+    )
+
+    db.add(new_member)
+
     await db.commit()
     await db.refresh(new_group)
 
-    return {"message": "success"}
+    return {
+        "message": "success",
+        "group_id": new_group.id
+    }
 
 
 async def add_member_to_group_askdb(member_to_add, group_id, user, db):
@@ -64,22 +79,24 @@ async def add_member_to_group_askdb(member_to_add, group_id, user, db):
     db.add(new_member)
     await db.commit()
     await db.refresh(new_member)
-    await activity_log(group_id, user.user_id, "add member to group", f"added {user_fin.id}", db)
+    if user.id is None:
+        raise HTTPException(status_code=404, detail="unexpected user")
+    await activity_log(group_id, user.id, "add member to group", f"added {user_fin.id}", db)
     return{"message": "success"}
 
 
 
 async def delete_member_from_group_askdb(member, group_id, db):
-    user_idd =  await db.execute(select(User).where(or_(User.email == member, User.full_name == member)))
+    user_idd = await db.execute(select(User).where(or_(User.email == member, User.full_name == member)))
     user = user_idd.scalar_one_or_none()
 
     if user is None:
             raise HTTPException(status_code=404, detail="unexpected behavior")
     
-    amount_owed = db.execute(select(ExpenseShare).where(ExpenseShare.user_id == user.id))
-    is_owed = await amount_owed.scalar_one_or_none()
+    amount_owedd = await db.execute(select(ExpenseShare).where(ExpenseShare.user_id == user.id))
+    is_owed = amount_owedd.scalar_one_or_none()
 
-    if is_owed != 0:
+    if is_owed is not None and is_owed.amount_owed != 0:
         raise HTTPException(status_code=409, detail="cannot delete user with amount owed > 0")
     
     to_delete = await db.execute(delete(GroupMember).where(GroupMember.user_id == user.id))
@@ -96,7 +113,7 @@ async def get_user_grups_askdb(current_user, db):
     groups_user = gruops.scalars().all()
     return groups_user
 
-async def get_every_user_askdb(group_id, current_user, db):
+async def get_every_user_askdb(group_id, db):
     result = await db.execute(select(User).join(GroupMember, GroupMember.user_id == User.id).where(GroupMember.group_id == group_id))
     users = result.scalars().all()
     return users
@@ -247,4 +264,7 @@ async def balance_ask_db(group_id, current_user, db):
 
 
 
-async def get_activity_askdb(group_id, page, limit, db)
+async def get_activity_askdb(group_id, page, limit, db):
+    offset = (page - 1) * limit
+    result = await db.execute(select(ActivityLog).where(ActivityLog.group_id == group_id).limit(limit).offset(offset))
+    return result.scalars().all()
