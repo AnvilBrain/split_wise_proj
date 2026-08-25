@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, ConfigDict
 from services.service import get_user_by_email, register_user_in_database, create_group_service, refresh_token_by_email, add_member_to_group_service, delete_member_from_group_service, get_user_grups_service, get_every_user_service, create_expense_service, get_expenses_service, delete_expense_service, balance_service, get_creditor_service, get_activity_service
 from core.db import get_db
-from core.security import get_current_user, check_access
+from core.security import get_current_user, check_access, get_current_user_refresh
 from models.expense import SplitType
 from decimal import Decimal
 
@@ -72,7 +72,7 @@ async def create_group(name: GroupCreate, current_user=Depends(get_current_user)
     return is_group_created
 
 @router.get("/refresh")
-async def refresh_token(token: str = Depends(oauth2_scheme), current_user=Depends(get_current_user), db=Depends(get_db)):
+async def refresh_token(token: str = Depends(oauth2_scheme), current_user=Depends(get_current_user_refresh), db=Depends(get_db)):
     refresh_result = await refresh_token_by_email(current_user.email, db, token)
     return refresh_result
 

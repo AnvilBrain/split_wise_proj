@@ -12,7 +12,7 @@ async def get_user_by_email(email, password, db):
 
 
     access_token = await create_access_token(decision.email, db)
-    refresh_token = create_refresh_token(decision.email, db)
+    refresh_token = await create_refresh_token(decision.email, db)
 
     return {
         "access_token": access_token,
