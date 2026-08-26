@@ -1,6 +1,7 @@
 from repositories.db_ask import ask_db_about_email, check_if_email_available_register_user_into_db_indbask, register_user_into_db, create_group_ask_db, add_member_to_group_askdb, delete_member_from_group_askdb, get_user_grups_askdb, get_every_user_askdb, create_expense_equal, create_expense_exact, create_expense_percent, get_expenses_db_ask, delete_expense_db_ask, balance_ask_db, get_activity_askdb
 from fastapi import FastAPI, HTTPException
 from core.security import create_access_token, create_refresh_token, hash_password, check_hashed_password
+from models.expense import SplitType
 
 async def get_user_by_email(email, password, db):
     decision = await ask_db_about_email(email, db)
@@ -76,12 +77,12 @@ async def create_expense_service(expense, group_id, user, db):
         raise HTTPException(status_code=404, detail="unexpected")
     return {"message": "success"}
 
-async def get_expenses_service(group_id, page, limit, user, db):
+async def get_expenses_service(group_id, page, limit, db):
     result = await get_expenses_db_ask(group_id, page, limit, db)
     return result
 
-async def delete_expense_service(expense_id, group_id, db):
-    result = await delete_expense_db_ask(expense_id, group_id, db)
+async def delete_expense_service(expense_id, group_id, user, db):
+    result = await delete_expense_db_ask(expense_id, group_id, user, db)
     return result
 
 async def balance_service(group_id, current_user, db):

@@ -90,7 +90,7 @@ async def get_current_user_refresh(token: str = Depends(oauth2_scheme), db=Depen
         raise HTTPException(status_code=401, detail="unexpected behavior2")
     if type_t == "access":
         raise HTTPException(status_code=401, detail="wrong token type")
-    user = await db.execute(select(User).where(User.email == emeail, User.resresh_token == token))
+    user = await db.execute(select(User).where(User.email == emeail, User.refresh_token == token))
     user2 = user.scalar_one_or_none() 
     if user2 is None:
         raise HTTPException(status_code=401, detail="unexpected behavior")

@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete, or_
+from sqlalchemy import select, delete, or_, func
 from models.user import User
 from fastapi import HTTPException
 from core.security import hash_password
@@ -59,8 +59,8 @@ async def create_group_ask_db(user, name, db):
 
 
 async def add_member_to_group_askdb(member_to_add, group_id, user, db):
-    user = await db.execute(select(User).where(or_(User.email == member_to_add, User.full_name == member_to_add)))
-    user_fin = user.scalar_one_or_none()
+    user2 = await db.execute(select(User).where(or_(User.email == member_to_add, User.full_name == member_to_add)))
+    user_fin = user2.scalar_one_or_none()
 
     if user_fin is None:
         raise HTTPException(status_code=404, detail="unexpected user")
@@ -71,6 +71,9 @@ async def add_member_to_group_askdb(member_to_add, group_id, user, db):
     if if_exists_fin is not None:
         raise HTTPException(status_code=409, detail="unexpected behavior, user already exists")
     
+    if user.id is None:
+        raise HTTPException(status_code=404, detail="unexpected user")
+    
     new_member = GroupMember(
         group_id=group_id,
         user_id=user_fin.id
@@ -79,8 +82,7 @@ async def add_member_to_group_askdb(member_to_add, group_id, user, db):
     db.add(new_member)
     await db.commit()
     await db.refresh(new_member)
-    if user.id is None:
-        raise HTTPException(status_code=404, detail="unexpected user")
+
     await activity_log(group_id, user.id, "add member to group", f"added {user_fin.id}", db)
     return{"message": "success"}
 
@@ -93,14 +95,14 @@ async def delete_member_from_group_askdb(member, group_id, db):
     if user is None:
             raise HTTPException(status_code=404, detail="unexpected behavior")
     
-    amount_owedd = await db.execute(select(ExpenseShare).where(ExpenseShare.user_id == user.id))
-    is_owed = amount_owedd.scalar_one_or_none()
+    amount_owedd = await db.scalar(select(func.sum(ExpenseShare.amount_owed)).join(Expense, Expense.id ==ExpenseShare.expense_id).where(ExpenseShare.user_id == user.id,Expense.group_id == group_id))
+    amount_owedd = amount_owedd or Decimal("0")
 
-    if is_owed is not None and is_owed.amount_owed != 0:
+    if amount_owedd != 0:
         raise HTTPException(status_code=409, detail="cannot delete user with amount owed > 0")
     
-    to_delete = await db.execute(delete(GroupMember).where(GroupMember.user_id == user.id))
-    db.commit()
+    to_delete = await db.execute(delete(GroupMember).where(GroupMember.user_id == user.id, GroupMember.group_id == group_id))
+    await db.commit()
     return {"message": "success"}
 
 
@@ -120,6 +122,8 @@ async def get_every_user_askdb(group_id, db):
 
 #equal
 async def create_expense_equal(expense, group_id, user, db):
+
+    len_of_members = int(len(expense.members)) #3
     if len_of_members == 0:
             raise HTTPException(status_code=404, detail="cannot be empty list")
     
@@ -135,7 +139,6 @@ async def create_expense_equal(expense, group_id, user, db):
     await db.commit()
     await db.refresh(new_expense)
 
-    len_of_members = int(len(expense.members)) #3
     
     to_expense = (expense.amount / len_of_members).quantize(Decimal("0.01")) #33.333333 -> 99.99 -> 100- 99.99 -> = 0.1
     accurate_expense = (expense.amount - (to_expense * len_of_members))
@@ -157,7 +160,7 @@ async def create_expense_equal(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
-    await activity_log(group_id, user.user_id, "created equal expense", f"{user.user_id} created equal expense", db)
+    await activity_log(group_id, user.id, "created equal expense", f"{user.id} created equal expense", db)
     
     return True
 
@@ -187,7 +190,7 @@ async def create_expense_exact(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
-    await activity_log(group_id, user.user_id, "created exact expense", f"{user.user_id} created exact expense", db)
+    await activity_log(group_id, user.id, "created exact expense", f"{user.id} created exact expense", db)
 
     return True
 
@@ -219,7 +222,7 @@ async def create_expense_percent(expense, group_id, user, db):
         db.add(new_expense_share)
     await db.commit()
     await db.refresh(new_expense_share)
-    await activity_log(group_id, user.user_id, "created percent expense", f"{user.user_id} created percent expense", db)
+    await activity_log(group_id, user.id, "created percent expense", f"{user.id} created percent expense", db)
 
     return True
 # class ExpenseShare(Base):
@@ -245,7 +248,7 @@ async def delete_expense_db_ask(expense_id, group_id, user, db):
     expense.is_deleted = True
     await db.execute(delete(ExpenseShare).where(ExpenseShare.expense_id == expense_id))
     await db.commit()
-    await activity_log(group_id, user.user_id, "deleted expense", f"{user.user_id} deleted expense {expense_id}", db)
+    await activity_log(group_id, user.id, "deleted expense", f"{user.id} deleted expense {expense_id}", db)
     return {"message": "success"}
 
 async def balance_ask_db(group_id, current_user, db):
